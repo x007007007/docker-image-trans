@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  image-trans:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - NEW_DOMAIN=${NEW_DOMAIN:-localhost:5000}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    depends_on:
+      - docker-daemon
+
+  docker-daemon:
+    image: docker:dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=""
+    volumes:
+      - docker-data:/var/lib/docker
+    restart: unless-stopped
+
+volumes:
+  docker-data: 

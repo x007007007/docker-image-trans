@@ -1,0 +1,28 @@
+[project]
+name = "image-trans"
+version = "0.1.0"
+description = "Docker镜像转换工具"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+    "docker>=7.1.0",
+    "pydantic>=2.11.7",
+    "python-multipart>=0.0.20",
+]
+requires-python = ">=3.12"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+] 
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple/"
+# url = "http://pypi.809.kinkotec.com.cn/root/pypi/+simple/"
+default = true
