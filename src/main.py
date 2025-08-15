@@ -43,48 +43,82 @@ async def notify_progress(message: str, progress: int = 0):
             return_exceptions=True
         )
 
-def parse_image_name(image_name: str) -> tuple[str, str, str]:
-    """解析镜像名称，返回registry, name, tag"""
-    # 支持多种格式: registry/name:tag, name:tag, registry/name, name
-    if '/' in image_name:
-        if ':' in image_name:
-            registry_name, tag = image_name.rsplit(':', 1)
-            if '/' in registry_name:
-                registry, name = registry_name.split('/', 1)
-            else:
-                registry, name = registry_name, ""
-        else:
-            registry_name = image_name
-            if '/' in registry_name:
-                registry, name = registry_name.split('/', 1)
-            else:
-                registry, name = registry_name, ""
-            tag = "latest"
-    else:
-        if ':' in image_name:
-            name, tag = image_name.split(':', 1)
-            registry = ""
-        else:
-            name = image_name
-            tag = "latest"
-            registry = ""
+def parse_image_name(image_name: str) -> tuple[str, str, str, str]:
+    """
+    解析镜像名称，返回 (registry, bucket, name, tag)
     
-    return registry, name, tag
+    支持的格式:
+    - name:tag -> (docker.io, library, name, tag)
+    - name -> (docker.io, library, name, latest)
+    - library/name:tag -> (docker.io, library, name, tag)
+    - library/name -> (docker.io, library, name, latest)
+    - registry/name:tag -> (registry, library, name, tag)
+    - registry/name -> (registry, library, name, latest)
+    - registry/bucket/name:tag -> (registry, bucket, name, tag)
+    - registry/bucket/name -> (registry, bucket, name, latest)
+    """
+    # 分离tag
+    if ':' in image_name:
+        name_part, tag = image_name.rsplit(':', 1)
+    else:
+        name_part = image_name
+        tag = "latest"
+    
+    # 解析路径部分
+    parts = name_part.split('/')
+    
+    if len(parts) == 1:
+        # name 或 name:tag
+        return "docker.io", "library", parts[0], tag
+    elif len(parts) == 2:
+        # 检查是否是 library/name 格式
+        if parts[0] == "library":
+            # library/name -> (docker.io, library, name, tag)
+            return "docker.io", "library", parts[1], tag
+        else:
+            # registry/name -> (registry, library, name, tag)
+            return parts[0], "library", parts[1], tag
+    elif len(parts) == 3:
+        # registry/bucket/name 或 registry/bucket/name:tag
+        return parts[0], parts[1], parts[2], tag
+    else:
+        # 不支持更多层级
+        raise ValueError(f"不支持的镜像名称格式: {image_name}")
+
+def build_source_image_name(registry: str, bucket: str, name: str, tag: str) -> str:
+    """构建源镜像名称"""
+    # 如果registry是docker.io且bucket是library，则省略registry
+    if registry == "docker.io" and bucket == "library":
+        return f"{name}:{tag}"
+    # 如果只有registry和name（bucket是library），则省略bucket
+    elif bucket == "library":
+        return f"{registry}/{name}:{tag}"
+    else:
+        return f"{registry}/{bucket}/{name}:{tag}"
+
+def build_target_image_name(new_domain: str, bucket: str, name: str, tag: str) -> str:
+    """构建目标镜像名称"""
+    # 目标镜像总是包含bucket，如果没有则使用library
+    if not bucket or bucket == "library":
+        return f"{new_domain}/library/{name}:{tag}"
+    else:
+        return f"{new_domain}/{bucket}/{name}:{tag}"
 
 async def process_docker_image(image_name: str, new_domain: str):
     """处理Docker镜像：拉取、重标签、推送"""
     try:
         # 解析镜像名称
-        registry, name, tag = parse_image_name(image_name)
-        if not name:
-            await notify_progress("错误：无法解析镜像名称", 0)
+        try:
+            registry, bucket, name, tag = parse_image_name(image_name)
+        except ValueError as e:
+            await notify_progress(f"错误：{str(e)}", 0)
             return False
         
         # 构建完整的源镜像名称
-        source_image = f"{registry}/{name}:{tag}" if registry else f"{name}:{tag}"
+        source_image = build_source_image_name(registry, bucket, name, tag)
         
         # 构建目标镜像名称
-        target_image = f"{new_domain}/{name}:{tag}"
+        target_image = build_target_image_name(new_domain, bucket, name, tag)
         
         await notify_progress(f"开始处理镜像: {source_image} -> {target_image}", 10)
         

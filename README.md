@@ -18,11 +18,23 @@
 
 ## 支持的镜像格式
 
-- `nginx:latest` - 简单名称，自动使用latest标签
-- `ubuntu:20.04` - 带版本标签的名称
-- `docker.io/library/nginx:1.21` - 完整仓库地址
-- `gcr.io/google-samples/hello-app:1.0` - Google容器仓库
-- `quay.io/prometheus/prometheus:v2.40.0` - Quay仓库
+### 基本格式
+- `nginx:latest` → `localhost:5000/library/nginx:latest`
+- `ubuntu:20.04` → `localhost:5000/library/ubuntu:20.04`
+
+### 带Registry格式
+- `docker.io/nginx:1.21` → `localhost:5000/library/nginx:1.21`
+- `gcr.io/google-samples/hello-app:1.0` → `localhost:5000/google-samples/hello-app:1.0`
+
+### 完整格式
+- `quay.io/prometheus/prometheus:v2.40.0` → `localhost:5000/prometheus/prometheus:v2.40.0`
+- `my-registry.com/my-project/app:v1.0` → `localhost:5000/my-project/app:v1.0`
+
+### 转换规则
+1. **简单名称** (`name:tag`) → 自动添加 `library/` 前缀
+2. **Docker Hub** (`docker.io/library/name:tag`) → 省略 `docker.io` 前缀
+3. **其他Registry** → 保留完整路径结构
+4. **目标镜像** → 统一使用 `新域名/bucket/name:tag` 格式
 
 ## 环境要求
 

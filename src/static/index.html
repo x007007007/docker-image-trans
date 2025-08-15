@@ -221,6 +221,46 @@
             border: 1px solid #ffeaa7;
         }
 
+        .conversion-preview {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .conversion-preview h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .preview-item:last-child {
+            border-bottom: none;
+        }
+
+        .preview-item .label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .preview-item .value {
+            font-family: monospace;
+            color: #667eea;
+            background: #e8f0fe;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -238,7 +278,20 @@
                 id="imageName" 
                 placeholder="例如: nginx:latest, docker.io/library/ubuntu:20.04"
                 autocomplete="off"
+                oninput="previewConversion()"
             >
+        </div>
+        
+        <div class="conversion-preview" id="conversionPreview" style="display: none;">
+            <h4>转换预览</h4>
+            <div class="preview-item">
+                <span class="label">源镜像:</span>
+                <span class="value" id="sourcePreview">-</span>
+            </div>
+            <div class="preview-item">
+                <span class="label">目标镜像:</span>
+                <span class="value" id="targetPreview">-</span>
+            </div>
         </div>
 
         <button class="submit-btn" id="submitBtn" onclick="processImage()">
@@ -263,11 +316,13 @@
 
         <div class="examples">
             <h3>支持的镜像格式示例：</h3>
-            <div class="example-item">• nginx:latest</div>
-            <div class="example-item">• ubuntu:20.04</div>
-            <div class="example-item">• docker.io/library/nginx:1.21</div>
-            <div class="example-item">• gcr.io/google-samples/hello-app:1.0</div>
-            <div class="example-item">• quay.io/prometheus/prometheus:v2.40.0</div>
+            <div class="example-item">• nginx:latest → localhost:5000/library/nginx:latest</div>
+            <div class="example-item">• ubuntu:20.04 → localhost:5000/library/ubuntu:20.04</div>
+            <div class="example-item">• library/nginx:latest → localhost:5000/library/nginx:latest</div>
+            <div class="example-item">• docker.io/library/nginx:1.21 → localhost:5000/library/nginx:1.21</div>
+            <div class="example-item">• gcr.io/google-samples/hello-app:1.0 → localhost:5000/google-samples/hello-app:1.0</div>
+            <div class="example-item">• quay.io/prometheus/prometheus:v2.40.0 → localhost:5000/prometheus/prometheus:v2.40.0</div>
+            <div class="example-item">• my-registry.com/my-project/app:v1.0 → localhost:5000/my-project/app:v1.0</div>
         </div>
     </div>
 
@@ -379,6 +434,62 @@
             document.getElementById('submitBtn').innerHTML = '开始转换';
             document.getElementById('progressContainer').style.display = 'none';
             document.getElementById('progressFill').style.width = '0%';
+        }
+
+        // 镜像名称转换预览
+        function previewConversion() {
+            const imageName = document.getElementById('imageName').value.trim();
+            const previewDiv = document.getElementById('conversionPreview');
+            
+            if (!imageName) {
+                previewDiv.style.display = 'none';
+                return;
+            }
+            
+            // 解析镜像名称（简化版本，实际转换在服务端）
+            let sourceImage, targetImage;
+            
+            // 分离tag
+            let namePart, tag;
+            if (imageName.includes(':')) {
+                [namePart, tag] = imageName.rsplit(':', 1);
+            } else {
+                namePart = imageName;
+                tag = 'latest';
+            }
+            
+            // 解析路径部分
+            const parts = namePart.split('/');
+            
+            if (parts.length === 1) {
+                // name 或 name:tag -> library/name:tag
+                sourceImage = `library/${parts[0]}:${tag}`;
+                targetImage = `localhost:5000/library/${parts[0]}:${tag}`;
+            } else if (parts.length === 2) {
+                // 检查是否是 library/name 格式
+                if (parts[0] === 'library') {
+                    // library/name -> library/name:tag
+                    sourceImage = `library/${parts[1]}:${tag}`;
+                    targetImage = `localhost:5000/library/${parts[1]}:${tag}`;
+                } else {
+                    // registry/name -> registry/name:tag
+                    sourceImage = `${parts[0]}/${parts[1]}:${tag}`;
+                    targetImage = `localhost:5000/library/${parts[1]}:${tag}`;
+                }
+            } else if (parts.length === 3) {
+                // registry/bucket/name 或 registry/bucket/name:tag -> registry/bucket/name:tag
+                sourceImage = `${parts[0]}/${parts[1]}/${parts[2]}:${tag}`;
+                targetImage = `localhost:5000/${parts[1]}/${parts[2]}:${tag}`;
+            } else {
+                // 不支持更多层级
+                sourceImage = '格式不支持';
+                targetImage = '格式不支持';
+            }
+            
+            // 更新预览
+            document.getElementById('sourcePreview').textContent = sourceImage;
+            document.getElementById('targetPreview').textContent = targetImage;
+            previewDiv.style.display = 'block';
         }
 
         // 检查Docker状态
