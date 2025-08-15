@@ -7,11 +7,14 @@
 - 🐳 支持多种Docker镜像格式
 - 📡 实时WebSocket进度更新
 - 🎨 现代化美观的Web界面
-- ⚡ 异步处理，不阻塞用户界面
+- ⚡ 完全异步架构，不阻塞事件循环
 - 🔄 自动重连WebSocket连接
 - 📱 响应式设计，支持移动设备
 - 🛡️ 使用官方Docker Python SDK，更安全可靠
 - 📊 详细的错误处理和状态反馈
+- 🔒 安全的Docker客户端管理，每次操作后自动关闭连接
+- 🧵 线程池执行Docker操作，避免阻塞异步事件循环
+- 🔍 实时Docker状态监控，直接在Web界面显示
 
 ## 支持的镜像格式
 
@@ -48,11 +51,11 @@ export NEW_DOMAIN="your-registry.com:5000"
 ### 3. 运行应用
 
 ```bash
-# 使用uv运行
-uv run main.py
+# 使用启动脚本
+uv run python src/start.py
 
 # 或者使用uvicorn直接运行
-uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 4. 访问应用
@@ -73,11 +76,17 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ```
 image_trans/
-├── main.py              # FastAPI主应用
-├── static/
-│   └── index.html      # 前端页面
-├── pyproject.toml      # 项目配置
-└── README.md           # 项目说明
+├── src/                       # 源代码目录
+│   ├── main.py               # FastAPI主应用
+│   ├── docker_manager.py     # Docker管理器（支持异步）
+│   ├── start.py              # 启动脚本
+│   └── static/               # 静态文件
+│       └── index.html        # 前端页面
+├── test/                     # 测试代码目录
+│   ├── test_docker_sdk.py    # Docker SDK测试脚本
+│   └── performance_test.py   # 性能测试脚本
+├── pyproject.toml            # 项目配置
+└── README.md                 # 项目说明
 ```
 
 ## API接口
@@ -138,6 +147,13 @@ uv run isort .
 ### 运行测试
 
 ```bash
+# 基础功能测试
+uv run python test/test_docker_sdk.py
+
+# 性能测试（需要Docker服务运行）
+uv run python test/performance_test.py
+
+# 使用pytest（如果安装了）
 uv run pytest
 ```
 

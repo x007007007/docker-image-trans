@@ -5,28 +5,23 @@ import os
 import re
 from typing import Optional
 
-import docker
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from docker_manager import DockerManager
+
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 初始化Docker客户端
-try:
-    docker_client = docker.from_env()
-    logger.info("Docker客户端初始化成功")
-except Exception as e:
-    logger.error(f"Docker客户端初始化失败: {e}")
-    docker_client = None
-
 app = FastAPI(title="Docker镜像转换工具")
 
 # 挂载静态文件
-app.mount("/static", StaticFiles(directory="static"), name="static")
+from pathlib import Path
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # 存储活跃的WebSocket连接
 active_connections: list[WebSocket] = []
@@ -78,10 +73,6 @@ def parse_image_name(image_name: str) -> tuple[str, str, str]:
 
 async def process_docker_image(image_name: str, new_domain: str):
     """处理Docker镜像：拉取、重标签、推送"""
-    if not docker_client:
-        await notify_progress("错误：Docker客户端未初始化", 0)
-        return False
-    
     try:
         # 解析镜像名称
         registry, name, tag = parse_image_name(image_name)
@@ -97,51 +88,52 @@ async def process_docker_image(image_name: str, new_domain: str):
         
         await notify_progress(f"开始处理镜像: {source_image} -> {target_image}", 10)
         
-        # 拉取镜像
+        # 拉取镜像（异步操作）
         await notify_progress("正在拉取Docker镜像...", 20)
         try:
-            # 使用Docker SDK拉取镜像
-            image = docker_client.images.pull(source_image)
+            image = await DockerManager.pull_image_async(source_image)
             await notify_progress(f"镜像拉取成功: {image.short_id}", 40)
-        except docker.errors.APIError as e:
-            error_msg = f"拉取镜像失败: {e.explanation}"
+        except Exception as e:
+            error_msg = f"拉取镜像失败: {str(e)}"
             await notify_progress(error_msg, 0)
             logger.error(error_msg)
             return False
         
-        # 重标签
+        # 重标签（异步操作）
         await notify_progress("正在重标签镜像...", 60)
         try:
-            # 使用Docker SDK重标签
-            image.tag(new_domain, name, tag=tag)
+            success = await DockerManager.tag_image_async(image, new_domain, name, tag)
+            if not success:
+                error_msg = "重标签失败"
+                await notify_progress(error_msg, 0)
+                logger.error(error_msg)
+                return False
             await notify_progress("镜像重标签成功", 80)
-        except docker.errors.APIError as e:
-            error_msg = f"重标签失败: {e.explanation}"
+        except Exception as e:
+            error_msg = f"重标签失败: {str(e)}"
             await notify_progress(error_msg, 0)
             logger.error(error_msg)
             return False
         
-        # 推送镜像
+        # 推送镜像（异步操作）
         await notify_progress("正在推送镜像到新地址...", 90)
         try:
-            # 使用Docker SDK推送镜像
-            push_result = docker_client.images.push(target_image, stream=True, decode=True)
+            # 定义进度回调函数
+            async def progress_callback(status: str):
+                await notify_progress(f"推送状态: {status}", 95)
             
-            # 处理推送流
-            for line in push_result:
-                if 'error' in line:
-                    error_msg = f"推送失败: {line['error']}"
-                    await notify_progress(error_msg, 0)
-                    logger.error(error_msg)
-                    return False
-                elif 'status' in line:
-                    await notify_progress(f"推送状态: {line['status']}", 95)
+            success = await DockerManager.push_image_async(target_image, progress_callback)
+            if not success:
+                error_msg = "推送镜像失败"
+                await notify_progress(error_msg, 0)
+                logger.error(error_msg)
+                return False
             
             await notify_progress(f"镜像处理完成！已推送到: {target_image}", 100)
             return True
             
-        except docker.errors.APIError as e:
-            error_msg = f"推送镜像失败: {e.explanation}"
+        except Exception as e:
+            error_msg = f"推送镜像失败: {str(e)}"
             await notify_progress(error_msg, 0)
             logger.error(error_msg)
             return False
@@ -178,17 +170,62 @@ async def process_image(request: ImageRequest):
 @app.get("/health")
 async def health_check():
     """健康检查端点"""
-    docker_status = "healthy" if docker_client else "unhealthy"
-    return {
-        "status": "ok",
-        "docker": docker_status,
-        "timestamp": asyncio.get_event_loop().time()
-    }
+    try:
+        docker_status = "healthy" if await DockerManager.test_connection_async() else "unhealthy"
+        docker_info = await DockerManager.get_connection_error_info_async()
+        
+        return {
+            "status": "ok",
+            "docker": docker_status,
+            "docker_info": docker_info,
+            "timestamp": asyncio.get_event_loop().time()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "docker": "unknown",
+            "docker_info": f"检查失败: {str(e)}",
+            "timestamp": asyncio.get_event_loop().time()
+        }
+
+@app.get("/docker-status")
+async def get_docker_status():
+    """获取Docker状态信息"""
+    try:
+        # 测试连接
+        is_connected = await DockerManager.test_connection_async()
+        
+        if is_connected:
+            # 获取详细信息
+            info = await DockerManager.get_docker_info_async()
+            return {
+                "connected": True,
+                "status": "healthy",
+                "info": info,
+                "message": "Docker连接正常"
+            }
+        else:
+            # 获取错误信息
+            error_info = await DockerManager.get_connection_error_info_async()
+            return {
+                "connected": False,
+                "status": "unhealthy",
+                "error": error_info,
+                "message": "Docker连接失败"
+            }
+    except Exception as e:
+        return {
+            "connected": False,
+            "status": "error",
+            "error": str(e),
+            "message": "检查Docker状态时发生错误"
+        }
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     """返回主页面"""
-    with open("static/index.html", "r", encoding="utf-8") as f:
+    html_path = Path(__file__).parent / "static" / "index.html"
+    with open(html_path, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 if __name__ == "__main__":
