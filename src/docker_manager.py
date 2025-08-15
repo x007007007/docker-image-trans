@@ -121,20 +121,24 @@ class DockerManager:
         return await loop.run_in_executor(_thread_pool, DockerManager.pull_image, image_name)
     
     @staticmethod
-    def tag_image(image: Any, new_domain: str, name: str, tag: str) -> bool:
+    def tag_image(image: Any, new_domain: str, bucket: str, name: str) -> bool:
         """同步重标签镜像"""
         try:
-            image.tag(new_domain, name, tag=tag)
+            # 构建完整的repository和tag
+            repository = f"{new_domain}/{bucket}"
+            tag = name
+            logger.info(f"重标签: repository={repository}, tag={tag}")
+            image.tag(repository, tag=tag)
             return True
         except Exception as e:
             logger.error(f"重标签失败: {e}")
             return False
     
     @staticmethod
-    async def tag_image_async(image: Any, new_domain: str, name: str, tag: str) -> bool:
+    async def tag_image_async(image: Any, new_domain: str, bucket: str, name: str) -> bool:
         """异步重标签镜像"""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(_thread_pool, DockerManager.tag_image, image, new_domain, name, tag)
+        return await loop.run_in_executor(_thread_pool, DockerManager.tag_image, image, new_domain, bucket, name)
     
     @staticmethod
     def push_image(image_name: str, progress_callback: Optional[Callable] = None) -> bool:

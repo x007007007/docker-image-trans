@@ -107,25 +107,34 @@ def build_target_image_name(new_domain: str, bucket: str, name: str, tag: str) -
 async def process_docker_image(image_name: str, new_domain: str):
     """处理Docker镜像：拉取、重标签、推送"""
     try:
+        logger.info(f"开始处理镜像: {image_name} -> {new_domain}")
+        
         # 解析镜像名称
         try:
             registry, bucket, name, tag = parse_image_name(image_name)
+            logger.info(f"解析结果: registry={registry}, bucket={bucket}, name={name}, tag={tag}")
         except ValueError as e:
-            await notify_progress(f"错误：{str(e)}", 0)
+            error_msg = f"错误：{str(e)}"
+            await notify_progress(error_msg, 0)
+            logger.error(error_msg)
             return False
         
         # 构建完整的源镜像名称
         source_image = build_source_image_name(registry, bucket, name, tag)
+        logger.info(f"源镜像名称: {source_image}")
         
         # 构建目标镜像名称
         target_image = build_target_image_name(new_domain, bucket, name, tag)
+        logger.info(f"目标镜像名称: {target_image}")
         
         await notify_progress(f"开始处理镜像: {source_image} -> {target_image}", 10)
         
         # 拉取镜像（异步操作）
         await notify_progress("正在拉取Docker镜像...", 20)
         try:
+            logger.info(f"开始拉取镜像: {source_image}")
             image = await DockerManager.pull_image_async(source_image)
+            logger.info(f"镜像拉取成功: {image.short_id}, tags={getattr(image, 'tags', [])}")
             await notify_progress(f"镜像拉取成功: {image.short_id}", 40)
         except Exception as e:
             error_msg = f"拉取镜像失败: {str(e)}"
@@ -136,7 +145,11 @@ async def process_docker_image(image_name: str, new_domain: str):
         # 重标签（异步操作）
         await notify_progress("正在重标签镜像...", 60)
         try:
-            success = await DockerManager.tag_image_async(image, new_domain, name, tag)
+            # 构建目标镜像名称用于重标签
+            target_image_name = f"{new_domain}/{bucket}/{name}"
+            logger.info(f"重标签参数: image={image.short_id}, repository={new_domain}/{bucket}, tag={name}")
+            
+            success = await DockerManager.tag_image_async(image, new_domain, bucket, name)
             if not success:
                 error_msg = "重标签失败"
                 await notify_progress(error_msg, 0)
@@ -152,8 +165,11 @@ async def process_docker_image(image_name: str, new_domain: str):
         # 推送镜像（异步操作）
         await notify_progress("正在推送镜像到新地址...", 90)
         try:
+            logger.info(f"开始推送镜像: {target_image}")
+            
             # 定义进度回调函数
             async def progress_callback(status: str):
+                logger.debug(f"推送进度: {status}")
                 await notify_progress(f"推送状态: {status}", 95)
             
             success = await DockerManager.push_image_async(target_image, progress_callback)
@@ -163,6 +179,7 @@ async def process_docker_image(image_name: str, new_domain: str):
                 logger.error(error_msg)
                 return False
             
+            logger.info(f"镜像推送成功: {target_image}")
             await notify_progress(f"镜像处理完成！已推送到: {target_image}", 100)
             return True
             
