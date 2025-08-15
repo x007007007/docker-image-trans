@@ -260,6 +260,23 @@
             border-radius: 4px;
             font-size: 14px;
         }
+        
+        .help-text {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+            font-style: italic;
+        }
+        
+        .domain-example {
+            color: #667eea;
+            font-weight: 500;
+            background: #e8f0fe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -280,6 +297,18 @@
                 autocomplete="off"
                 oninput="previewConversion()"
             >
+        </div>
+        
+        <div class="input-group">
+            <label for="newDomain">目标域名 (可选)</label>
+            <input 
+                type="text" 
+                id="newDomain" 
+                placeholder="留空则使用系统默认域名"
+                autocomplete="off"
+                oninput="previewConversion()"
+            >
+            <small class="help-text">如果不填写，将使用系统默认域名: <span id="defaultDomain"></span></small>
         </div>
         
         <div class="conversion-preview" id="conversionPreview" style="display: none;">
@@ -316,13 +345,14 @@
 
         <div class="examples">
             <h3>支持的镜像格式示例：</h3>
-            <div class="example-item">• nginx:latest → localhost:5000/library/nginx:latest</div>
-            <div class="example-item">• ubuntu:20.04 → localhost:5000/library/ubuntu:20.04</div>
-            <div class="example-item">• library/nginx:latest → localhost:5000/library/nginx:latest</div>
-            <div class="example-item">• docker.io/library/nginx:1.21 → localhost:5000/library/nginx:1.21</div>
-            <div class="example-item">• gcr.io/google-samples/hello-app:1.0 → localhost:5000/google-samples/hello-app:1.0</div>
-            <div class="example-item">• quay.io/prometheus/prometheus:v2.40.0 → localhost:5000/prometheus/prometheus:v2.40.0</div>
-            <div class="example-item">• my-registry.com/my-project/app:v1.0 → localhost:5000/my-project/app:v1.0</div>
+            <div class="example-item">• nginx:latest → <span class="domain-example"></span>/library/nginx:latest</div>
+            <div class="example-item">• ubuntu:20.04 → <span class="domain-example"></span>/library/ubuntu:20.04</div>
+            <div class="example-item">• library/nginx:latest → <span class="domain-example"></span>/library/nginx:latest</div>
+            <div class="example-item">• docker.io/library/nginx:1.21 → <span class="domain-example"></span>/library/nginx:1.21</div>
+            <div class="example-item">• gcr.io/google-samples/hello-app:1.0 → <span class="domain-example"></span>/google-samples/hello-app:1.0</div>
+            <div class="example-item">• quay.io/prometheus/prometheus:v2.40.0 → <span class="domain-example"></span>/prometheus/prometheus:v2.40.0</div>
+            <div class="example-item">• my-registry.com/my-project/app:v1.0 → <span class="domain-example"></span>/my-project/app:v1.0</div>
+            <div class="example-item">• <small>💡 在"目标域名"输入框中输入自定义地址可覆盖默认域名</small></div>
         </div>
     </div>
 
@@ -383,12 +413,18 @@
             document.getElementById('statusMessages').innerHTML = '';
             
             try {
+                const newDomain = document.getElementById('newDomain').value.trim();
+                const requestBody = { 
+                    image_name: imageName,
+                    new_domain: newDomain || undefined  // 如果没有输入则不传递
+                };
+                
                 const response = await fetch('/process-image', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ image_name: imageName })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (response.ok) {
@@ -439,12 +475,16 @@
         // 镜像名称转换预览
         function previewConversion() {
             const imageName = document.getElementById('imageName').value.trim();
+            const newDomain = document.getElementById('newDomain').value.trim();
             const previewDiv = document.getElementById('conversionPreview');
             
             if (!imageName) {
                 previewDiv.style.display = 'none';
                 return;
             }
+            
+            // 使用用户输入的域名，如果没有则使用动态获取的默认值
+            const targetDomain = newDomain || window.defaultDomain || 'localhost:5000';
             
             // 解析镜像名称（简化版本，实际转换在服务端）
             let sourceImage, targetImage;
@@ -464,22 +504,22 @@
             if (parts.length === 1) {
                 // name 或 name:tag -> library/name:tag
                 sourceImage = `library/${parts[0]}:${tag}`;
-                targetImage = `localhost:5000/library/${parts[0]}:${tag}`;
+                targetImage = `${targetDomain}/library/${parts[0]}:${tag}`;
             } else if (parts.length === 2) {
                 // 检查是否是 library/name 格式
                 if (parts[0] === 'library') {
                     // library/name -> library/name:tag
                     sourceImage = `library/${parts[1]}:${tag}`;
-                    targetImage = `localhost:5000/library/${parts[1]}:${tag}`;
+                    targetImage = `${targetDomain}/library/${parts[1]}:${tag}`;
                 } else {
                     // registry/name -> registry/name:tag
                     sourceImage = `${parts[0]}/${parts[1]}:${tag}`;
-                    targetImage = `localhost:5000/library/${parts[1]}:${tag}`;
+                    targetImage = `${targetDomain}/library/${parts[1]}:${tag}`;
                 }
             } else if (parts.length === 3) {
                 // registry/bucket/name 或 registry/bucket/name:tag -> registry/bucket/name:tag
                 sourceImage = `${parts[0]}/${parts[1]}/${parts[2]}:${tag}`;
-                targetImage = `localhost:5000/${parts[1]}/${parts[2]}:${tag}`;
+                targetImage = `${targetDomain}/${parts[1]}/${parts[2]}:${tag}`;
             } else {
                 // 不支持更多层级
                 sourceImage = '格式不支持';
@@ -492,6 +532,35 @@
             previewDiv.style.display = 'block';
         }
 
+        // 获取应用配置
+        async function getAppConfig() {
+            try {
+                const response = await fetch('/config');
+                const config = await response.json();
+                
+                // 更新默认域名显示
+                const defaultDomainSpan = document.getElementById('defaultDomain');
+                if (defaultDomainSpan) {
+                    defaultDomainSpan.textContent = config.default_domain;
+                }
+                
+                // 更新placeholder
+                const newDomainInput = document.getElementById('newDomain');
+                if (newDomainInput) {
+                    newDomainInput.placeholder = `留空则使用系统默认域名: ${config.default_domain}`;
+                }
+                
+                // 更新转换预览中的默认域名
+                window.defaultDomain = config.default_domain;
+                
+                console.log('应用配置已加载:', config);
+            } catch (error) {
+                console.error('获取应用配置失败:', error);
+                // 使用默认值
+                window.defaultDomain = 'localhost:5000';
+            }
+        }
+        
         // 检查Docker状态
         async function checkDockerStatus() {
             try {
@@ -526,13 +595,24 @@
         // 页面加载完成后连接WebSocket和检查Docker状态
         document.addEventListener('DOMContentLoaded', function() {
             connectWebSocket();
-            checkDockerStatus();
             
-            // 每30秒检查一次Docker状态
-            setInterval(checkDockerStatus, 30000);
+            // 先获取应用配置，再检查Docker状态
+            getAppConfig().then(() => {
+                checkDockerStatus();
+                
+                // 每30秒检查一次Docker状态
+                setInterval(checkDockerStatus, 30000);
+            });
             
             // 支持回车键提交
             document.getElementById('imageName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    processImage();
+                }
+            });
+            
+            // 支持回车键提交域名
+            document.getElementById('newDomain').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     processImage();
                 }

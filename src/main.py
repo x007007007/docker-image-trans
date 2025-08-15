@@ -28,6 +28,7 @@ active_connections: list[WebSocket] = []
 
 class ImageRequest(BaseModel):
     image_name: str
+    new_domain: Optional[str] = None
 
 async def notify_progress(message: str, progress: int = 0):
     """向所有连接的WebSocket客户端发送进度更新"""
@@ -211,12 +212,14 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.post("/process-image")
 async def process_image(request: ImageRequest):
     """处理镜像转换请求"""
-    new_domain = os.getenv("NEW_DOMAIN", "localhost:5000")
+    # 优先使用用户输入的域名，如果没有则使用环境变量默认值
+    new_domain = request.new_domain or os.getenv("NEW_DOMAIN", "localhost:5000")
+    logger.info(f"使用目标域名: {new_domain} (用户输入: {request.new_domain}, 环境变量: {os.getenv('NEW_DOMAIN')})")
     
     # 启动异步任务处理镜像
     asyncio.create_task(process_docker_image(request.image_name, new_domain))
     
-    return {"message": "镜像处理已开始", "image_name": request.image_name}
+    return {"message": "镜像处理已开始", "image_name": request.image_name, "target_domain": new_domain}
 
 @app.get("/health")
 async def health_check():
@@ -270,6 +273,22 @@ async def get_docker_status():
             "status": "error",
             "error": str(e),
             "message": "检查Docker状态时发生错误"
+        }
+
+@app.get("/config")
+async def get_config():
+    """获取应用配置信息"""
+    try:
+        default_domain = os.getenv("NEW_DOMAIN", "localhost:5000")
+        return {
+            "default_domain": default_domain,
+            "environment": os.getenv("ENVIRONMENT", "development")
+        }
+    except Exception as e:
+        logger.error(f"获取配置失败: {e}")
+        return {
+            "default_domain": "localhost:5000",
+            "environment": "development"
         }
 
 @app.get("/", response_class=HTMLResponse)
