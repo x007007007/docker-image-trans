@@ -162,8 +162,26 @@ class DockerManager:
     @staticmethod
     async def push_image_async(image_name: str, progress_callback: Optional[Callable] = None) -> bool:
         """异步推送镜像"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(_thread_pool, DockerManager.push_image, image_name, progress_callback)
+        try:
+            with DockerManager.get_client() as client:
+                push_result = client.images.push(image_name, stream=True, decode=True)
+                
+                for line in push_result:
+                    if 'error' in line:
+                        logger.error(f"推送失败: {line['error']}")
+                        return False
+                    elif progress_callback and 'status' in line:
+                        # 如果回调是异步函数，需要await
+                        if asyncio.iscoroutinefunction(progress_callback):
+                            await progress_callback(line['status'])
+                        else:
+                            # 同步回调直接调用
+                            progress_callback(line['status'])
+                
+                return True
+        except Exception as e:
+            logger.error(f"推送镜像失败: {e}")
+            return False
     
     # ==================== 便捷方法 ====================
     

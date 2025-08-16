@@ -345,13 +345,13 @@
 
         <div class="examples">
             <h3>支持的镜像格式示例：</h3>
-            <div class="example-item">• nginx:latest → <span class="domain-example"></span>/library/nginx:latest</div>
-            <div class="example-item">• ubuntu:20.04 → <span class="domain-example"></span>/library/ubuntu:20.04</div>
-            <div class="example-item">• library/nginx:latest → <span class="domain-example"></span>/library/nginx:latest</div>
-            <div class="example-item">• docker.io/library/nginx:1.21 → <span class="domain-example"></span>/library/nginx:1.21</div>
-            <div class="example-item">• gcr.io/google-samples/hello-app:1.0 → <span class="domain-example"></span>/google-samples/hello-app:1.0</div>
-            <div class="example-item">• quay.io/prometheus/prometheus:v2.40.0 → <span class="domain-example"></span>/prometheus/prometheus:v2.40.0</div>
-            <div class="example-item">• my-registry.com/my-project/app:v1.0 → <span class="domain-example"></span>/my-project/app:v1.0</div>
+            <div class="example-item">• nginx:latest → <span class="domain-example" id="exampleDomain1">加载中...</span>/library/nginx:latest</div>
+            <div class="example-item">• ubuntu:20.04 → <span class="domain-example" id="exampleDomain2">加载中...</span>/library/ubuntu:20.04</div>
+            <div class="example-item">• library/nginx:latest → <span class="domain-example" id="exampleDomain3">加载中...</span>/library/nginx:latest</div>
+            <div class="example-item">• docker.io/library/nginx:1.21 → <span class="domain-example" id="exampleDomain4">加载中...</span>/library/nginx:1.21</div>
+            <div class="example-item">• gcr.io/google-samples/hello-app:1.0 → <span class="domain-example" id="exampleDomain5">加载中...</span>/google-samples/hello-app:1.0</div>
+            <div class="example-item">• quay.io/prometheus/prometheus:v2.40.0 → <span class="domain-example" id="exampleDomain6">加载中...</span>/prometheus/prometheus:v2.40.0</div>
+            <div class="example-item">• my-registry.com/my-project/app:v1.0 → <span class="domain-example" id="exampleDomain7">加载中...</span>/my-project/app:v1.0</div>
             <div class="example-item">• <small>💡 在"目标域名"输入框中输入自定义地址可覆盖默认域名</small></div>
         </div>
     </div>
@@ -484,7 +484,17 @@
             }
             
             // 使用用户输入的域名，如果没有则使用动态获取的默认值
-            const targetDomain = newDomain || window.defaultDomain || 'localhost:5000';
+            const targetDomain = newDomain || window.defaultDomain;
+            
+            // 如果没有域名配置，显示错误信息
+            if (!targetDomain) {
+                sourceImage = '配置未加载';
+                targetImage = '请等待配置加载完成';
+                document.getElementById('sourcePreview').textContent = sourceImage;
+                document.getElementById('targetPreview').textContent = targetImage;
+                previewDiv.style.display = 'block';
+                return;
+            }
             
             // 解析镜像名称（简化版本，实际转换在服务端）
             let sourceImage, targetImage;
@@ -553,11 +563,19 @@
                 // 更新转换预览中的默认域名
                 window.defaultDomain = config.default_domain;
                 
+                // 更新所有示例中的域名
+                for (let i = 1; i <= 7; i++) {
+                    const exampleDomain = document.getElementById(`exampleDomain${i}`);
+                    if (exampleDomain) {
+                        exampleDomain.textContent = config.default_domain;
+                    }
+                }
+                
                 console.log('应用配置已加载:', config);
             } catch (error) {
                 console.error('获取应用配置失败:', error);
-                // 使用默认值
-                window.defaultDomain = 'localhost:5000';
+                // 如果获取配置失败，不设置默认值，让用户知道配置有问题
+                console.warn('无法获取应用配置，请检查后端服务');
             }
         }
         

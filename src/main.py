@@ -173,7 +173,12 @@ async def process_docker_image(image_name: str, new_domain: str):
                 logger.debug(f"推送进度: {status}")
                 await notify_progress(f"推送状态: {status}", 95)
             
-            success = await DockerManager.push_image_async(target_image, progress_callback)
+            # 使用同步包装器来避免协程警告
+            def sync_progress_callback(status: str):
+                # 在事件循环中调度异步回调
+                asyncio.create_task(progress_callback(status))
+            
+            success = await DockerManager.push_image_async(target_image, sync_progress_callback)
             if not success:
                 error_msg = "推送镜像失败"
                 await notify_progress(error_msg, 0)
@@ -213,7 +218,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def process_image(request: ImageRequest):
     """处理镜像转换请求"""
     # 优先使用用户输入的域名，如果没有则使用环境变量默认值
-    new_domain = request.new_domain or os.getenv("NEW_DOMAIN", "localhost:5000")
+    new_domain = request.new_domain or os.getenv("NEW_DOMAIN", "gitlab.localhost:5000")
     logger.info(f"使用目标域名: {new_domain} (用户输入: {request.new_domain}, 环境变量: {os.getenv('NEW_DOMAIN')})")
     
     # 启动异步任务处理镜像
