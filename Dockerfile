@@ -1,25 +1,28 @@
-FROM python:3.11-slim
+ARG IMAGE_PUB_ROOT_URL
+FROM ${IMAGE_PUB_ROOT_URL}library/python:3.12.5 AS builder
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
 
-# 设置工作目录
-WORKDIR /app
-
-# 安装系统依赖
 RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:$PATH"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip config set global.index-url "${PIP_INDEX_URL}" \
+    && pip install uv
+
+# 设置工作目录
+WORKDIR /app
 
 # 复制项目文件
-COPY pyproject.toml requirements.txt ./
-COPY main.py ./
-COPY static/ ./static/
-COPY test_docker_sdk.py ./
+COPY pyproject.toml ./
 
-# 安装Python依赖
-RUN uv sync --frozen
+# 创建虚拟环境并安装依赖
+RUN uv venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv pip install --system .
+
+# 复制应用代码
+COPY src/ ./src/
 
 # 暴露端口
 EXPOSE 8000
@@ -29,4 +32,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # 启动命令
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
