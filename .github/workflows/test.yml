@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: latest
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Run tests
+      run: |
+        uv run python test/test_docker_sdk.py
+        uv run python test/test_image_parsing.py
+        uv run python test/test_tag_fix.py
+
+    - name: Run performance tests (if Docker is available)
+      run: |
+        if command -v docker &> /dev/null; then
+          uv run python test/performance_test.py
+        else
+          echo "Docker not available, skipping performance tests"
+        fi 

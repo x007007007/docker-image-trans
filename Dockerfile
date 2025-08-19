@@ -1,14 +1,14 @@
-ARG IMAGE_PUB_ROOT_URL
-FROM ${IMAGE_PUB_ROOT_URL}library/python:3.12.5 AS builder
-ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
+# 多架构构建支持
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip config set global.index-url "${PIP_INDEX_URL}" \
-    && pip install uv
+RUN pip install uv
 
 # 设置工作目录
 WORKDIR /app
@@ -32,4 +32,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # 启动命令
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"] 
