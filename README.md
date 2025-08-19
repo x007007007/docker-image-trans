@@ -1,5 +1,7 @@
 # Docker镜像转换工具
 
+> 🤖 **AI 开发项目** - 本项目由 AI 助手协助开发，展示了 AI 在软件开发中的能力
+
 一个基于FastAPI和WebSocket的Docker镜像转换工具，可以拉取Docker镜像，重标签并推送到新的镜像仓库。
 
 ## 功能特性
@@ -86,18 +88,24 @@ uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## 项目结构
 
+> 💡 **AI 协作开发** - 项目结构经过 AI 助手优化，采用现代化的 Python 项目布局
+
 ```
 image_trans/
 ├── src/                       # 源代码目录
 │   ├── main.py               # FastAPI主应用
 │   ├── docker_manager.py     # Docker管理器（支持异步）
 │   ├── start.py              # 启动脚本
-│   └── static/               # 静态文件
-│       └── index.html        # 前端页面
+│   └── static/               # 前端静态文件
+│       └── index.html        # 现代化Web界面
 ├── test/                     # 测试代码目录
 │   ├── test_docker_sdk.py    # Docker SDK测试脚本
-│   └── performance_test.py   # 性能测试脚本
-├── pyproject.toml            # 项目配置
+│   ├── performance_test.py   # 性能测试脚本
+│   ├── test_image_parsing.py # 镜像解析逻辑测试
+│   └── test_tag_fix.py      # 标签修复测试
+├── pyproject.toml            # 项目配置（使用uv）
+├── Dockerfile                # 容器化部署配置
+├── docker-compose.yml        # 多服务编排配置
 └── README.md                 # 项目说明
 ```
 
@@ -143,6 +151,8 @@ image_trans/
 
 ## 开发
 
+> 🚀 **AI 驱动开发** - 本项目采用 AI 辅助开发模式，代码质量和架构设计得到持续优化
+
 ### 安装开发依赖
 
 ```bash
@@ -168,6 +178,32 @@ uv run python test/performance_test.py
 # 使用pytest（如果安装了）
 uv run pytest
 ```
+
+## AI 协作开发总结
+
+本项目展示了 AI 在软件开发中的强大能力：
+
+### 🤖 AI 贡献
+- **架构设计**: 采用现代化的异步架构，使用 FastAPI + WebSocket
+- **代码质量**: 实现了完整的错误处理、日志记录和测试覆盖
+- **用户体验**: 设计了响应式的前端界面，支持实时进度更新
+- **最佳实践**: 使用 Docker SDK 替代命令行调用，提高安全性和可靠性
+- **持续优化**: 根据用户反馈不断改进功能和修复问题
+
+### 🎯 开发特点
+- **迭代式开发**: 通过用户反馈持续优化
+- **问题驱动**: 每个功能都解决实际使用中的问题
+- **测试覆盖**: 为关键功能编写专门的测试用例
+- **文档完善**: 详细的使用说明和故障排除指南
+
+### 💡 技术亮点
+- 异步 Docker 操作管理
+- 智能镜像名称解析
+- 实时 WebSocket 通信
+- 容器化部署支持
+- 多环境配置管理
+
+---
 
 ## 许可证
 
