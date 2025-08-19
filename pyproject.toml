@@ -23,9 +23,70 @@ dev-dependencies = [
     "pytest>=7.4.0",
     "black>=23.0.0",
     "isort>=5.12.0",
+    "pre-commit>=4.3.0",
+    "setuptools>=80.9.0",
+    "pip>=25.2",
 ] 
 
 [[tool.uv.index]]
 url = "https://mirrors.aliyun.com/pypi/simple/"
-# url = "http://pypi.809.kinkotec.com.cn/root/pypi/+simple/"
 default = true
+
+
+[tool.flake8]
+per-file-ignores = [
+    '__init__.py:F401'
+]
+max-line-length = 120
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/settings/*.py",
+]
+
+[tool.coverage.path]
+source = [
+    "src/",
+    "tests/"
+]
+[tool.coverage.report]
+show_missing = true
+ignore_errors = true
+exclude_lines = [
+    'def __repr__',
+    '^if\s+typing.TYPE_CHECKING:(\s*\n.*)*'
+]
+
+[tool.coverage.xml]
+output = "dist/coverage.xml"
+
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+include = '\.pyi?$'
+source.organizeImports = false
+exclude = '''
+/(
+    \.git
+| \.hg
+| \.mypy_cache
+| \.tox
+| \.venv
+| \.pdm-build
+| \venv
+| _build
+| buck-out
+| build
+|
+)/
+'''
+
+[tool.isort]
+profile = "hug"
+force_single_line = true
+src_paths = ["isort", "test"]
+known_django = "django"
+known_pandas = ["pandas", "numpy"]
+sections = "FUTURE,STDLIB,DJANGO,THIRDPARTY,PANDAS,FIRSTPARTY,LOCALFOLDER"
