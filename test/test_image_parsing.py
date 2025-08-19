@@ -3,13 +3,16 @@
 测试镜像名称解析逻辑
 """
 
-import sys
 import os
+import sys
 
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from main import parse_image_name, build_source_image_name, build_target_image_name
+from main import build_source_image_name
+from main import build_target_image_name
+from main import parse_image_name
+
 
 def test_image_parsing():
     """测试镜像名称解析"""

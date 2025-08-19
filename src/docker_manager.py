@@ -7,7 +7,10 @@ import asyncio
 import contextlib
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Generator, Any, Callable
+from typing import Any
+from typing import Callable
+from typing import Generator
+from typing import Optional
 
 import docker
 

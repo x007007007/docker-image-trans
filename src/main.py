@@ -5,12 +5,13 @@ import os
 import re
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-
 from docker_manager import DockerManager
+from fastapi import FastAPI
+from fastapi import WebSocket
+from fastapi import WebSocketDisconnect
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +21,7 @@ app = FastAPI(title="Docker镜像转换工具")
 
 # 挂载静态文件
 from pathlib import Path
+
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 

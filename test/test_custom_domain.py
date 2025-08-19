@@ -3,14 +3,17 @@
 测试自定义域名功能
 """
 
-import sys
-import os
 import asyncio
+import os
+import sys
 
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from main import parse_image_name, build_source_image_name, build_target_image_name
+from main import build_source_image_name
+from main import build_target_image_name
+from main import parse_image_name
+
 
 def test_custom_domain_building():
     """测试自定义域名构建"""

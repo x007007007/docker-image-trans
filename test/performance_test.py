@@ -5,14 +5,15 @@
 """
 
 import asyncio
-import time
-import sys
 import os
+import sys
+import time
 
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from docker_manager import DockerManager
+
 
 async def test_sync_operations():
     """测试同步操作性能"""

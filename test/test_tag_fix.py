@@ -3,14 +3,15 @@
 测试tag_image修复后的功能
 """
 
-import sys
 import os
+import sys
 
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from docker_manager import DockerManager
 import docker
+from docker_manager import DockerManager
+
 
 def test_tag_image():
     """测试tag_image方法"""
