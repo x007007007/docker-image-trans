@@ -5,8 +5,7 @@ services:
     build:
       context: .
       args:
-       - IMAGE_PUB_ROOT_URL=${IMAGE_PUB_ROOT_URL:-harbor.809.kinkotec.com.cn/arm-}
-
+       - IMAGE_PUB_ROOT_URL=
     ports:
       - "8000:8000"
     environment:
